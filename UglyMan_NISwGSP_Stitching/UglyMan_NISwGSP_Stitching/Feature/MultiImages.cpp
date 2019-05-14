@@ -1018,25 +1018,27 @@ Mat MultiImages::textureMapping(const vector<vector<Point2> > & _vertices,
         }
         Mat image = Mat::zeros(rects[i].height + shift.y, rects[i].width + shift.x, CV_8UC4);
         Mat w_mask = (_blend_method != BLEND_AVERAGE) ? Mat::zeros(image.size(), CV_32FC1) : Mat();
-        for(int y = 0; y < image.rows; ++y) {
-            for(int x = 0; x < image.cols; ++x) {
+        parallel_for_(Range(0, image.rows * image.cols), [&](const Range &range) {
+            for (int r = range.start; r < range.end; r++) {
+                int y = r / image.cols;
+                int x = r % image.cols;
                 int polygon_index = polygon_index_mask.at<int>(y, x);
-                if(polygon_index != NO_GRID) {
+                if (polygon_index != NO_GRID) {
                     Point2 p_f = applyTransform2x3<FLOAT_TYPE>(x, y,
                                                                affine_transforms[polygon_index]);
-                    if(p_f.x >= 0 && p_f.y >= 0 &&
-                       p_f.x <= images_data[i].img.cols &&
-                       p_f.y <= images_data[i].img.rows) {
+                    if (p_f.x >= 0 && p_f.y >= 0 &&
+                        p_f.x <= images_data[i].img.cols &&
+                        p_f.y <= images_data[i].img.rows) {
                         Vec<uchar, 1> alpha = getSubpix<uchar, 1>(images_data[i].alpha_mask, p_f);
                         Vec3b c = getSubpix<uchar, 3>(images_data[i].img, p_f);
                         image.at<Vec4b>(y, x) = Vec4b(c[0], c[1], c[2], alpha[0]);
-                        if(_blend_method != BLEND_AVERAGE) {
+                        if (_blend_method != BLEND_AVERAGE) {
                             w_mask.at<float>(y, x) = getSubpix<float>(weight_mask[i], p_f);
                         }
                     }
                 }
             }
-        }
+        });
         _warp_images.emplace_back(image);
         origins.emplace_back(rects[i].x, rects[i].y);
         if(_blend_method != BLEND_AVERAGE) {
