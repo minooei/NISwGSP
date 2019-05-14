@@ -37,6 +37,7 @@ vector<string> getImageFileFullNamesInDir(const string & dir_name) {
     } else {
         printError("F(getImageFileFullNamesInDir) could not open directory");
     }
+    std::sort(result.begin(), result.end());  //needed on linux
     return result;
 }
 
